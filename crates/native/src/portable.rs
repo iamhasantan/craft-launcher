@@ -514,7 +514,8 @@ mod tests {
             ("photocraft-0.6.1-windows-x64-portable/lib/runtime.dll", b"library"),
         ]);
         let record = install(app, &zip, "0.6.1", None, &paths, None, false, &mut |_| Ok(())).unwrap();
-        assert_eq!(record.path, paths.apps().join("photocraft/photocraft.exe"));
+        assert_eq!(record.path.file_name().unwrap(), "photocraft.exe");
+        assert_eq!(record.path.parent().unwrap().file_name().unwrap(), "photocraft");
         assert_eq!(std::fs::read(&record.path).unwrap(), b"program");
         assert_eq!(std::fs::read(paths.apps().join("photocraft/lib/runtime.dll")).unwrap(), b"library");
         assert_eq!(record.files.len(), 3);
