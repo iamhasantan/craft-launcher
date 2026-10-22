@@ -1,0 +1,48 @@
+name: Portable ZIP fix test build
+
+on:
+  push:
+    branches:
+      - fix/portable-zip-layout
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-portable:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - name: Verify formatting
+        run: cargo fmt --all -- --check
+      - name: Portable installer regression tests
+        run: cargo test --locked -p artcraft-launcher-native portable::tests -- --nocapture
+      - name: Build Windows launcher
+        env:
+          ARTCRAFT_LAUNCHER_REQUIRE_WINRES: "1"
+          CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUSTFLAGS: -C target-feature=+crt-static
+        run: cargo build --release --locked -p artcraft-launcher --target x86_64-pc-windows-msvc
+      - name: Assemble upstream-style portable ZIP
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $Exe = 'target/x86_64-pc-windows-msvc/release/artcraft-launcher.exe'
+          if (-not (Test-Path $Exe)) { throw "Missing compiled launcher: ${Exe}" }
+          $Stage = 'dist/artcraft-launcher-portable-fix-windows-x64'
+          New-Item -ItemType Directory -Force -Path $Stage | Out-Null
+          Copy-Item $Exe (Join-Path $Stage 'artcraft-launcher.exe')
+          Copy-Item 'packaging/windows/portable.txt' (Join-Path $Stage 'portable.txt')
+          Compress-Archive -Path $Stage -DestinationPath 'dist/artcraft-launcher-portable-fix-windows-x64.zip' -Force
+      - name: Upload test ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: artcraft-launcher-portable-fix-windows-x64
+          path: dist/artcraft-launcher-portable-fix-windows-x64.zip
+          if-no-files-found: error
+          retention-days: 14
