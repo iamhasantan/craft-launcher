@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   windows-portable:
@@ -21,6 +21,17 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Format working tree before test build
         run: cargo fmt --all
+      - name: Commit Rust formatting for upstream contribution
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add crates/native/src/portable.rs
+          git diff --cached --quiet
+          if ($LASTEXITCODE -ne 0) {
+            git commit -m "style: format portable ZIP installer"
+            git push origin HEAD:fix/portable-zip-layout
+          }
       - name: Portable installer regression tests
         run: cargo test --locked -p artcraft-launcher-native portable::tests -- --nocapture
       - name: Build Windows launcher
