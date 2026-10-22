@@ -233,8 +233,8 @@ pub fn install(
         let unpacked = unpacked.join(&prefix);
         let files: Vec<PathBuf> = files
             .into_iter()
-            .map(|path| path.strip_prefix(&prefix).expect("prefix checked above").to_path_buf())
-            .collect();
+            .map(|path| path.strip_prefix(&prefix).map(Path::to_path_buf).map_err(|e| e.to_string()))
+            .collect::<Result<Vec<_>, _>>()?;
         (unpacked, files)
     };
     let executable = files
