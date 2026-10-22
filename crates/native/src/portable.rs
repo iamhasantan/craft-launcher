@@ -210,24 +210,17 @@ pub fn install(
     // Accept that layout and traditional flat archives, but never arbitrary nesting.
     let has_root_executable = files.iter().any(|relative| {
         relative.parent().is_some_and(|parent| parent.as_os_str().is_empty())
-            && relative.file_name().and_then(|name| name.to_str()).is_some_and(|name| {
-                app.stems().any(|stem| name.eq_ignore_ascii_case(&format!("{stem}.exe")))
-            })
+            && relative
+                .file_name()
+                .and_then(|name| name.to_str())
+                .is_some_and(|name| app.stems().any(|stem| name.eq_ignore_ascii_case(&format!("{stem}.exe"))))
     });
     let (unpacked, files) = if has_root_executable {
         (unpacked, files)
     } else {
-        let prefix = files
-            .first()
-            .and_then(|path| path.components().next())
-            .ok_or("The portable ZIP contains no files.")?
-            .as_os_str()
-            .to_os_string();
+        let prefix = files.first().and_then(|path| path.components().next()).ok_or("The portable ZIP contains no files.")?.as_os_str().to_os_string();
         let prefix = PathBuf::from(prefix);
-        if !files.iter().all(|path| {
-            path.strip_prefix(&prefix)
-                .is_ok_and(|relative| relative.components().next().is_some())
-        }) {
+        if !files.iter().all(|path| path.strip_prefix(&prefix).is_ok_and(|relative| relative.components().next().is_some())) {
             return Err("The portable ZIP has an unsupported directory layout.".into());
         }
         let unpacked = unpacked.join(&prefix);
@@ -508,11 +501,15 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let app = CraftApp::by_id("photocraft").unwrap();
         let paths = Paths::under(dir.path());
-        let zip = archive(dir.path(), "release.zip", &[
-            ("photocraft-0.6.1-windows-x64-portable/photocraft.exe", b"program"),
-            ("photocraft-0.6.1-windows-x64-portable/portable.txt", b""),
-            ("photocraft-0.6.1-windows-x64-portable/lib/runtime.dll", b"library"),
-        ]);
+        let zip = archive(
+            dir.path(),
+            "release.zip",
+            &[
+                ("photocraft-0.6.1-windows-x64-portable/photocraft.exe", b"program"),
+                ("photocraft-0.6.1-windows-x64-portable/portable.txt", b""),
+                ("photocraft-0.6.1-windows-x64-portable/lib/runtime.dll", b"library"),
+            ],
+        );
         let record = install(app, &zip, "0.6.1", None, &paths, None, false, &mut |_| Ok(())).unwrap();
         assert_eq!(record.path.file_name().unwrap(), "photocraft.exe");
         assert_eq!(record.path.parent().unwrap().file_name().unwrap(), "photocraft");
@@ -529,13 +526,8 @@ mod tests {
         let app = CraftApp::by_id("photocraft").unwrap();
         let paths = Paths::under(dir.path());
         for (name, entries) in [
-            ("mixed.zip", vec![
-                ("package/photocraft.exe", b"program".as_slice()),
-                ("another/readme.txt", b"other".as_slice()),
-            ]),
-            ("nested.zip", vec![
-                ("wrapper/inner/photocraft.exe", b"program".as_slice()),
-            ]),
+            ("mixed.zip", vec![("package/photocraft.exe", b"program".as_slice()), ("another/readme.txt", b"other".as_slice())]),
+            ("nested.zip", vec![("wrapper/inner/photocraft.exe", b"program".as_slice())]),
         ] {
             let zip = archive(dir.path(), name, &entries);
             assert!(install(app, &zip, "0.6.1", None, &paths, None, false, &mut |_| Ok(())).is_err(), "{name}");
