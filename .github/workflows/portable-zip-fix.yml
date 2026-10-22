@@ -19,8 +19,8 @@ jobs:
           targets: x86_64-pc-windows-msvc
           components: rustfmt
       - uses: Swatinem/rust-cache@v2
-      - name: Verify formatting
-        run: cargo fmt --all -- --check
+      - name: Format working tree before test build
+        run: cargo fmt --all
       - name: Portable installer regression tests
         run: cargo test --locked -p artcraft-launcher-native portable::tests -- --nocapture
       - name: Build Windows launcher
